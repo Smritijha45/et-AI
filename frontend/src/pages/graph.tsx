@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import GraphView from '../components/GraphView';
 import { GraphSkeleton } from '../components/Skeleton';
 import Link from 'next/link';
-import { Network, Search, ShieldAlert, ArrowRight, Info } from 'lucide-react';
+import { Network, Search, ShieldAlert, ArrowRight, Info, Eye, Layers } from 'lucide-react';
 
 interface Report {
   victimId: string;
@@ -38,6 +38,9 @@ export default function GraphPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // View mode toggle
+  const [viewMode, setViewMode] = useState<'pyvis' | 'canvas'>('pyvis');
+
   // Interactive selected state
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +55,7 @@ export default function GraphPage() {
         const reportsJson = await reportsRes.json();
         setReports(reportsJson.data || []);
 
-        // Fetch graph analysis
+        // Fetch graph analysis (which also regenerates graph.html on the fly)
         const analysisRes = await fetch('http://localhost:5000/api/graph-analysis');
         if (!analysisRes.ok) throw new Error('Failed to load graph analysis');
         const analysisJson = await analysisRes.json();
@@ -141,37 +144,65 @@ export default function GraphPage() {
             Network Graph Explorer
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Visual connection mapping. Zoom to view labels, drag to adjust forces, click nodes to view metrics.
+            Visual connection mapping. Select view modes, zoom to inspect details, and hover over elements to read telemetry.
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search entities (e.g. Phone, UPI)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-          />
-          {searchQuery && filteredNodes.length > 0 && (
-            <div className="absolute top-11 left-0 z-20 w-full bg-slate-900 border border-slate-800 rounded-lg max-h-48 overflow-y-auto shadow-2xl divide-y divide-slate-800/40">
-              {filteredNodes.map(node => (
-                <button
-                  key={node.id}
-                  onClick={() => {
-                    setSelectedNodeId(node.id);
-                    setSearchQuery('');
-                  }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-slate-800/50 text-xs text-slate-300 transition-colors flex justify-between items-center"
-                >
-                  <span className="truncate font-semibold">{node.label}</span>
-                  <span className="text-[10px] text-slate-500 uppercase">{node.type}</span>
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-lg flex items-center gap-1">
+            <button
+              onClick={() => setViewMode('pyvis')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'pyvis'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              PyVis Graph
+            </button>
+            <button
+              onClick={() => setViewMode('canvas')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'canvas'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Canvas View
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search entities (e.g. UPI, Device)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+            {searchQuery && filteredNodes.length > 0 && (
+              <div className="absolute top-11 left-0 z-20 w-full bg-slate-900 border border-slate-800 rounded-lg max-h-48 overflow-y-auto shadow-2xl divide-y divide-slate-800/40">
+                {filteredNodes.map(node => (
+                  <button
+                    key={node.id}
+                    onClick={() => {
+                      setSelectedNodeId(node.id);
+                      setSearchQuery('');
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-slate-800/50 text-xs text-slate-300 transition-colors flex justify-between items-center"
+                  >
+                    <span className="truncate font-semibold">{node.label}</span>
+                    <span className="text-[10px] text-slate-500 uppercase">{node.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -183,10 +214,43 @@ export default function GraphPage() {
 
       {/* Main split layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow min-h-[500px]">
-        {/* Canvas Graph View */}
-        <div className="lg:col-span-3 h-[600px]">
+        {/* Graph Render Container */}
+        <div className="lg:col-span-3 h-[600px] relative">
           {loading ? (
             <GraphSkeleton />
+          ) : viewMode === 'pyvis' ? (
+            <div className="w-full h-full rounded-xl border border-slate-800 overflow-hidden bg-slate-950 relative">
+              {/* Legend overlay inside PyVis */}
+              <div className="absolute top-4 left-4 z-10 bg-slate-900/90 backdrop-blur-sm border border-slate-800 p-3 rounded-lg text-xs space-y-2 select-none pointer-events-none">
+                <h4 className="font-semibold text-slate-300 border-b border-slate-800 pb-1.5 mb-1.5">Network Node Types</h4>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#6366f1] inline-block"></span>
+                  <span>Victims</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#f97316] inline-block"></span>
+                  <span>Phones</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#eab308] inline-block"></span>
+                  <span>UPI handles</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] inline-block"></span>
+                  <span>Bank Accounts</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] inline-block"></span>
+                  <span>Devices</span>
+                </div>
+              </div>
+              
+              <iframe
+                src="/graph.html"
+                className="w-full h-full border-0"
+                title="PyVis Fraud Connection Graph"
+              />
+            </div>
           ) : (
             <GraphView
               nodes={nodes}
@@ -219,9 +283,7 @@ export default function GraphPage() {
                 </div>
 
                 <div className="flex justify-between items-center bg-slate-950/40 border border-slate-800/40 p-2.5 rounded-lg">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-400">PageRank Importance</span>
-                  </div>
+                  <span className="text-xs text-slate-400">PageRank Importance</span>
                   <span className="text-sm font-semibold text-indigo-400 font-mono">
                     {pagerank !== null && pagerank !== undefined ? pagerank.toFixed(5) : '0.00000'}
                   </span>
@@ -235,7 +297,7 @@ export default function GraphPage() {
                 </div>
               </div>
 
-              {/* Confidence Risk Score (shared nodes only) */}
+              {/* Confidence Risk Score */}
               {selectedNode.type !== 'Victim' && (
                 <div className="space-y-3 border-t border-slate-800/60 pt-5">
                   <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fraud Risk Engine</h4>
@@ -249,8 +311,7 @@ export default function GraphPage() {
                         </span>
                         <span className="text-lg font-bold text-rose-400">{(confidence * 100).toFixed(0)}%</span>
                       </div>
-                      {/* Progress bar */}
-                      <div className="w-full bg-rose-950/40 rounded-full h-1.5">
+                      <div className="w-full bg-rose-955/40 rounded-full h-1.5">
                         <div className="bg-rose-500 h-1.5 rounded-full" style={{ width: `${confidence * 100}%` }}></div>
                       </div>
                       <p className="text-[10px] text-rose-300/70 leading-relaxed">
@@ -282,7 +343,9 @@ export default function GraphPage() {
               <Network className="w-12 h-12 mb-3 text-slate-700 animate-pulse" />
               <h4 className="font-semibold text-slate-400 mb-1">Select an Entity</h4>
               <p className="text-xs max-w-[200px]">
-                Click on any node in the graph workspace to analyze its structural centrality and risk values.
+                {viewMode === 'canvas' 
+                  ? 'Click on any node in the canvas layout to audit its centralities and risk scores.' 
+                  : 'Search for an entity inside the input box to examine specific risk score details.'}
               </p>
             </div>
           )}

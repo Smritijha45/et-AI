@@ -36,8 +36,17 @@ export const getGraphAnalysis = async (_req: Request, res: Response): Promise<vo
     // Determine the Python command (defaults to python)
     const pythonCmd = process.env.PYTHON_CMD || 'python';
     
-    // Prepare shell execution command
-    const command = `"${pythonCmd}" "${pythonScriptPath}" --file "${analysisFile}"`;
+    // Resolve absolute path to the Next.js public directory to export the HTML graph
+    const frontendPublicDir = path.join(__dirname, '..', '..', '..', 'frontend', 'public');
+    const htmlOutPath = path.join(frontendPublicDir, 'graph.html');
+    
+    // Ensure the frontend public directory exists (failsafe)
+    if (!fs.existsSync(frontendPublicDir)) {
+      fs.mkdirSync(frontendPublicDir, { recursive: true });
+    }
+
+    // Prepare shell execution command with HTML export flag
+    const command = `"${pythonCmd}" "${pythonScriptPath}" --file "${analysisFile}" --html_out "${htmlOutPath}"`;
     
     // Spawn Python script as a child process
     exec(command, (error, stdout, stderr) => {
