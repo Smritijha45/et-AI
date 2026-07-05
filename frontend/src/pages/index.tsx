@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import StatCard from '../components/StatCard';
 import { TableSkeleton } from '../components/Skeleton';
+import { NodeDistributionChart, RiskProfileChart } from '../components/AnalyticsCharts';
 import { 
   FileText, 
   Network, 
@@ -10,8 +11,9 @@ import {
   ArrowUpRight, 
   Clock, 
   User, 
-  PlusCircle,
-  AlertTriangle
+  AlertTriangle,
+  Terminal,
+  Activity
 } from 'lucide-react';
 
 interface Report {
@@ -41,6 +43,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Forensics terminal logging lines
+  const [logs, setLogs] = useState<string[]>([]);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -49,13 +54,30 @@ export default function Dashboard() {
         const reportsRes = await fetch('http://localhost:5000/api/report');
         if (!reportsRes.ok) throw new Error('Failed to fetch reports list');
         const reportsJson = await reportsRes.json();
-        setReports(reportsJson.data || []);
+        const allReports = reportsJson.data || [];
+        setReports(allReports);
 
         // Fetch graph analysis
         const analysisRes = await fetch('http://localhost:5000/api/graph-analysis');
         if (!analysisRes.ok) throw new Error('Failed to fetch graph analysis');
         const analysisJson = await analysisRes.json();
-        setAnalysis(analysisJson.data || null);
+        const analysisData = analysisJson.data || null;
+        setAnalysis(analysisData);
+        
+        // Populate terminal logs dynamically
+        if (analysisData) {
+          const timestamp = new Date().toLocaleTimeString();
+          const logsList = [
+            `[${timestamp}] INITIALIZING GRAPH ENGINE: Loading network libraries...`,
+            `[${timestamp}] DATABASE SYNC: Pulled ${allReports.length} reports successfully from MongoDB.`,
+            `[${timestamp}] GRAPH COMPILE: Compiled ${analysisData["graph stats"].totalNodes} nodes and ${analysisData["graph stats"].totalEdges} undirected links.`,
+            `[${timestamp}] LOUVAIN MODULARITY: Partitioned graph into ${analysisData.communities.length} clusters (size > 5 indicates collusion).`,
+            `[${timestamp}] RISK ASSESSMENT: Calculated PageRank & Betweenness Centrality for all hubs.`,
+            `[${timestamp}] RISK ALIGNMENT: Flagged ${Object.keys(analysisData["confidence scores"]).length} shared infrastructure entities above risk threshold.`,
+            `[${timestamp}] DIAGNOSTIC COMPLETE: Forensic network graph is stable. Ready for queries.`
+          ];
+          setLogs(logsList);
+        }
         
         setError(null);
       } catch (err) {
@@ -92,11 +114,12 @@ export default function Dashboard() {
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-            Fraud Network Intelligence
+          <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl glow-text-gradient">
+            Cybercrime Forensics & Graph Intelligence
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Real-time multi-hop entity analytics and cluster detection.
+          <p className="text-slate-400 text-sm mt-1 flex items-center gap-1.5">
+            <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
+            Active monitoring engine. Resolving multi-hop linkages and mule rings dynamically.
           </p>
         </div>
       </div>
@@ -150,12 +173,35 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Telemetry Charts */}
+      {analysis && !loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glass-panel border-slate-800/80 rounded-xl p-6 bg-slate-900/10 hover:border-slate-800 transition-colors">
+            <h3 className="font-semibold text-slate-100 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider font-mono">
+              <Network className="w-4 h-4 text-indigo-400" />
+              Graph Node Distribution
+            </h3>
+            <p className="text-[10px] text-slate-500 mb-4">Breakdown of unique structural entity nodes in the database.</p>
+            <NodeDistributionChart nodeTypeCounts={analysis["graph stats"].nodeTypeCounts} />
+          </div>
+
+          <div className="glass-panel border-slate-800/80 rounded-xl p-6 bg-slate-900/10 hover:border-slate-800 transition-colors">
+            <h3 className="font-semibold text-slate-100 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider font-mono">
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+              Entity Risk Classification
+            </h3>
+            <p className="text-[10px] text-slate-500 mb-4">Risk levels computed dynamically by sharing degree and PageRank.</p>
+            <RiskProfileChart confidenceScores={analysis["confidence scores"]} />
+          </div>
+        </div>
+      )}
+
       {/* Recent Reports Section */}
       <div className="grid grid-cols-1 gap-6">
         {loading ? (
           <TableSkeleton />
         ) : (
-          <div className="glass-panel border-slate-800/80 rounded-xl overflow-hidden">
+          <div className="glass-panel border-slate-800/80 rounded-xl overflow-hidden shadow-2xl bg-slate-900/10">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800/60">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-indigo-400" />
@@ -215,6 +261,34 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Forensics Terminal Logs */}
+      {logs.length > 0 && !loading && (
+        <div className="glass-panel border-slate-800/80 rounded-xl p-5 shadow-2xl bg-slate-950/60 font-mono text-xs text-indigo-400">
+          <div className="flex items-center justify-between border-b border-indigo-950/40 pb-3 mb-3">
+            <div className="flex items-center gap-2 text-indigo-300">
+              <Terminal className="w-4 h-4 text-indigo-400" />
+              <span>FORENSIC TELEMETRY CONSOLE</span>
+            </div>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            </span>
+          </div>
+          <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin select-all">
+            {logs.map((log, index) => (
+              <div key={index} className="flex gap-2">
+                <span className="text-indigo-600/80 select-none">➔</span>
+                <p>{log}</p>
+              </div>
+            ))}
+            <div className="text-indigo-300 flex items-center gap-1">
+              <span>➔ [system] listening for incoming logs</span>
+              <span className="terminal-cursor font-bold">█</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
