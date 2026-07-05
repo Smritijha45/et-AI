@@ -5,12 +5,13 @@ import sys
 import argparse
 from graph_builder import build_graph_from_file
 
-def analyze_fraud_graph(file_path, max_suspicious=20):
+def analyze_fraud_graph(file_path):
     """
     Analyzes the fraud connection graph and returns a dictionary with:
     - communities: List of detected Louvain communities
-    - suspiciousNodes: Sorted list of high-risk infrastructure entities (non-victims)
-    - graphStats: General graph-level metrics
+    - centrality: Dict of node importance scores (PageRank and Betweenness Centrality)
+    - graph stats: General graph-level metrics
+    - confidence scores: Calculated fraud likelihood (0.0 to 1.0) for shared entity hubs
     """
     # 1. Build the graph
     G = build_graph_from_file(file_path)
@@ -18,19 +19,22 @@ def analyze_fraud_graph(file_path, max_suspicious=20):
     if len(G) == 0:
         return {
             "communities": [],
-            "suspiciousNodes": [],
-            "graphStats": {
+            "centrality": {
+                "pagerank": {},
+                "betweenness": {}
+            },
+            "graph stats": {
                 "totalNodes": 0,
                 "totalEdges": 0,
-                "density": 0,
+                "density": 0.0,
                 "numberConnectedComponents": 0,
                 "nodeTypeCounts": {}
-            }
+            },
+            "confidence scores": {}
         }
     
-    # 2. Compute Louvain Community Detection (using fixed seed for reproducibility)
+    # 2. Compute Louvain Community Detection (with seed for deterministic results)
     try:
-        # networkx.community.louvain_communities returns a list of sets of nodes
         communities_sets = nx.community.louvain_communities(G, seed=42)
         communities = []
         for idx, com_set in enumerate(communities_sets):
@@ -38,51 +42,37 @@ def analyze_fraud_graph(file_path, max_suspicious=20):
                 "id": idx,
                 "nodes": sorted(list(com_set))
             })
-    except Exception as e:
-        # Fallback to connected components if community detection fails
+    except Exception:
+        # Fallback to connected components
         communities = [{
             "id": idx,
             "nodes": sorted(list(c))
         } for idx, c in enumerate(nx.connected_components(G))]
 
-    # 3. Compute PageRank
+    # 3. Compute PageRank Centrality
     pagerank_scores = nx.pagerank(G)
     
     # 4. Compute Betweenness Centrality
     betweenness_scores = nx.betweenness_centrality(G)
     
-    # 5. Compute Degree Centrality
+    # 5. Compute Degree Centrality (for confidence calculations)
     degrees = dict(G.degree())
     
-    # 6. Identify Suspicious Nodes (Focus on shared infrastructures like Phone, UPI, BankAccount, Device)
-    suspicious_list = []
-    
+    # 6. Calculate Confidence Scores
+    # Only calculate confidence for non-victim infrastructure entities that are shared (degree > 1)
+    confidence_scores = {}
     for node, data in G.nodes(data=True):
         node_type = data.get('type')
-        
-        # We do not mark Victims as suspicious hubs (they are victims of the hubs)
         if node_type == "Victim":
             continue
             
         deg = degrees.get(node, 0)
-        pr = pagerank_scores.get(node, 0.0)
-        bc = betweenness_scores.get(node, 0.0)
-        
-        # A node is suspicious if it is shared by multiple victims (degree > 1)
         if deg > 1:
-            suspicious_list.append({
-                "nodeId": node,
-                "type": node_type,
-                "label": data.get('label'),
-                "degree": deg,
-                "pagerank": pr,
-                "betweenness": bc
-            })
-            
-    # Sort suspicious nodes: primary sort by degree (descending), secondary by pagerank (descending)
-    suspicious_list.sort(key=lambda x: (x['degree'], x['pagerank']), reverse=True)
-    suspicious_nodes = suspicious_list[:max_suspicious]
-    
+            # Formula: 1.0 - (1.0 / degree)
+            # E.g. shared by 2 victims -> 0.50; by 5 victims -> 0.80; by 20 victims -> 0.95
+            confidence = 1.0 - (1.0 / deg)
+            confidence_scores[node] = round(confidence, 3)
+
     # 7. Collect Graph Stats
     node_types = nx.get_node_attributes(G, 'type')
     node_type_counts = {}
@@ -102,8 +92,12 @@ def analyze_fraud_graph(file_path, max_suspicious=20):
     
     return {
         "communities": communities,
-        "suspiciousNodes": suspicious_nodes,
-        "graphStats": graph_stats
+        "centrality": {
+            "pagerank": pagerank_scores,
+            "betweenness": betweenness_scores
+        },
+        "graph stats": graph_stats,
+        "confidence scores": confidence_scores
     }
 
 def main():
@@ -111,7 +105,7 @@ def main():
     parser.add_argument(
         "--file", 
         type=str, 
-        help="Path to the synthetic reports JSON file",
+        help="Path to the reports JSON file",
         default=os.path.join(os.path.dirname(__file__), "synthetic_reports.json")
     )
     parser.add_argument(

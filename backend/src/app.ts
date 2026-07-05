@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import reportRoutes from './routes/reportRoutes';
+import analysisRoutes from './routes/analysisRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +15,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/report', reportRoutes);
+app.use('/api/graph-analysis', analysisRoutes);
 
 // Health Check / Welcome route
 app.get('/', (_req: Request, res: Response) => {
