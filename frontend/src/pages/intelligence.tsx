@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { TableSkeleton } from '../components/Skeleton';
-import Link from 'next/link';
 import { 
   FileSearch, 
-  Search, 
+  Download, 
+  ShieldAlert, 
+  Calendar, 
   User, 
   PhoneCall, 
   Wallet, 
   CreditCard, 
   Smartphone, 
-  ShieldAlert, 
   ArrowRight,
-  ChevronRight,
+  ShieldCheck,
+  Network,
+  Scale,
+  Hash,
+  AlertTriangle,
+  FolderOpen,
   Info
 } from 'lucide-react';
 
@@ -23,9 +27,11 @@ interface Report {
   upiId: string;
   bankAccount: string;
   deviceFingerprint: string;
+  reportTimestamp: string;
 }
 
 interface AnalysisData {
+  communities: Array<{ id: number; nodes: string[] }>;
   centrality: {
     pagerank: Record<string, number>;
     betweenness: Record<string, number>;
@@ -33,29 +39,29 @@ interface AnalysisData {
   "confidence scores": Record<string, number>;
 }
 
-interface Node {
+interface Dossier {
   id: string;
-  type: string;
-  label: string;
-}
-
-interface LinkType {
-  source: string;
-  target: string;
+  communityId: number;
+  confidenceScore: number;
+  victims: string[];
+  phones: string[];
+  upis: string[];
+  banks: string[];
+  devices: string[];
+  suspicionReasons: string[];
+  evidenceChain: Array<{ hub: string; type: string; label: string; connectedVictims: string[] }>;
+  timeline: Array<{ timestamp: string; victim: string; phone: string; upi: string; bank: string; device: string }>;
 }
 
 export default function IntelligencePage() {
-  const router = useRouter();
-  const { node: queryNodeId } = router.query;
-
   const [reports, setReports] = useState<Report[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search/Active states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  // Selected dossier state
+  const [selectedDossierId, setSelectedDossierId] = useState<string | null>(null);
+  const [dossiers, setDossiers] = useState<Dossier[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -65,13 +71,154 @@ export default function IntelligencePage() {
         const reportsRes = await fetch('http://localhost:5000/api/report');
         if (!reportsRes.ok) throw new Error('Failed to load reports');
         const reportsJson = await reportsRes.json();
-        setReports(reportsJson.data || []);
+        const allReports = reportsJson.data || [];
+        setReports(allReports);
 
         // Fetch graph analysis
         const analysisRes = await fetch('http://localhost:5000/api/graph-analysis');
         if (!analysisRes.ok) throw new Error('Failed to load graph analysis');
         const analysisJson = await analysisRes.json();
-        setAnalysis(analysisJson.data || null);
+        const analysisData = analysisJson.data || null;
+        setAnalysis(analysisData);
+
+        if (analysisData && allReports.length > 0) {
+          // Construct dossiers from communities of size > 5
+          const communities = analysisData.communities || [];
+          const confidenceScores = analysisData["confidence scores"] || {};
+          const pagerank = analysisData.centrality.pagerank || {};
+
+          const activeDossiers: Dossier[] = communities
+            .filter((c: any) => c.nodes.length > 5)
+            .map((c: any, index: number) => {
+              const caseId = `CASE-FR-${(index + 1).toString().padStart(3, '0')}`;
+              
+              // 1. Group nodes by type
+              const victims: string[] = [];
+              const phones: string[] = [];
+              const upis: string[] = [];
+              const banks: string[] = [];
+              const devices: string[] = [];
+
+              c.nodes.forEach((nodeId: string) => {
+                const [type, ...parts] = nodeId.split(':');
+                const val = parts.join(':');
+
+                if (type === 'victim') victims.push(val);
+                else if (type === 'phone') phones.push(val);
+                else if (type === 'upi') upis.push(val);
+                else if (type === 'bank') banks.push(val);
+                else if (type === 'device') devices.push(val);
+              });
+
+              // 2. Fetch involved reports and construct Timeline
+              const victimsSet = new Set(victims);
+              const ringReports = allReports.filter((r: Report) => victimsSet.has(r.victimId));
+              
+              // Sort reports chronologically
+              const timeline = ringReports
+                .map((r: Report) => ({
+                  timestamp: r.reportTimestamp,
+                  victim: r.victimName,
+                  phone: r.phoneNumber,
+                  upi: r.upiId,
+                  bank: r.bankAccount,
+                  device: r.deviceFingerprint
+                }))
+                .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+              // 3. Trace Evidence Chain (find which shared hubs connect which victims)
+              const evidenceChain: Dossier['evidenceChain'] = [];
+              const sharedEntities = [...phones.map(p => ({ id: `phone:${p}`, type: 'Phone', val: p })),
+                                      ...upis.map(u => ({ id: `upi:${u}`, type: 'UPI', val: u })),
+                                      ...banks.map(b => ({ id: `bank:${b}`, type: 'BankAccount', val: b })),
+                                      ...devices.map(d => ({ id: `device:${d}`, type: 'Device', val: d }))];
+
+              sharedEntities.forEach(ent => {
+                // Find all victims in the community linked to this entity
+                const connectedVics: string[] = [];
+                ringReports.forEach((r: Report) => {
+                  const match = (ent.type === 'Phone' && r.phoneNumber === ent.val) ||
+                                (ent.type === 'UPI' && r.upiId === ent.val) ||
+                                (ent.type === 'BankAccount' && r.bankAccount === ent.val) ||
+                                (ent.type === 'Device' && r.deviceFingerprint === ent.val);
+                  
+                  if (match) {
+                    connectedVics.push(r.victimName);
+                  }
+                });
+
+                // If shared by more than 1 victim, it is evidence of collusion
+                if (connectedVics.length > 1) {
+                  evidenceChain.push({
+                    hub: ent.id,
+                    type: ent.type,
+                    label: ent.val,
+                    connectedVictims: connectedVics
+                  });
+                }
+              });
+
+              // Sort evidence chain hubs by number of connections (descending)
+              evidenceChain.sort((a, b) => b.connectedVictims.length - a.connectedVictims.length);
+
+              // 4. Calculate Combined Confidence Score
+              // Take the average of confidence scores of shared hubs, fallback to 0.75 if empty
+              const confs = evidenceChain.map(ec => confidenceScores[ec.hub] || 0.5);
+              const confidenceScore = confs.length > 0 
+                ? confs.reduce((a, b) => a + b, 0) / confs.length
+                : 0.75;
+
+              // 5. Generate Suspicion Profiling reasons
+              const suspicionReasons: string[] = [];
+              if (devices.length > 0 && evidenceChain.some(e => e.type === 'Device')) {
+                suspicionReasons.push("Centralized Device Fingerprint detected: Multiple victims logging scam complaints from the same hardware signature, implying emulator spoofing or coordinated centralized scam terminals.");
+              }
+              if (banks.length > 0 && evidenceChain.some(e => e.type === 'BankAccount')) {
+                suspicionReasons.push("Money-Mule Bank Repositories: Coordinated transfers routed to shared mule bank accounts. High probability of structured financial layering.");
+              }
+              if (upis.length > 0 && evidenceChain.some(e => e.type === 'UPI')) {
+                suspicionReasons.push("Shared UPI Mule Destination Handles: Victims reported sending funds to identical UPI addresses, mapping directly to money mule networks.");
+              }
+              if (phones.length > 0 && evidenceChain.some(e => e.type === 'Phone')) {
+                suspicionReasons.push("Scammer Contact Linkage: Multi-victim linkages established via common calling phone numbers, mapping scam campaigns to a single calling cell.");
+              }
+              
+              // Find node with highest PageRank centrality in this community
+              let maxPrNode = "";
+              let maxPrVal = 0;
+              c.nodes.forEach((nId: string) => {
+                const pr = pagerank[nId] || 0;
+                if (pr > maxPrVal) {
+                  maxPrVal = pr;
+                  maxPrNode = nId;
+                }
+              });
+              if (maxPrNode) {
+                const [type, ...parts] = maxPrNode.split(':');
+                const lbl = parts.join(':');
+                suspicionReasons.push(`Centralized Routing Bottleneck: Network flow PageRank flags '${lbl}' (${type.toUpperCase()}) as the highest-influence routing hub with an importance score of ${maxPrVal.toFixed(5)}.`);
+              }
+
+              return {
+                id: caseId,
+                communityId: c.id,
+                confidenceScore: roundScore(confidenceScore),
+                victims,
+                phones,
+                upis,
+                banks,
+                devices,
+                suspicionReasons,
+                evidenceChain,
+                timeline
+              };
+            });
+            
+          setDossiers(activeDossiers);
+          if (activeDossiers.length > 0) {
+            setSelectedDossierId(activeDossiers[0].id);
+          }
+        }
         
         setError(null);
       } catch (err) {
@@ -85,85 +232,23 @@ export default function IntelligencePage() {
     fetchData();
   }, []);
 
-  // Update active node from router query parameter
-  useEffect(() => {
-    if (queryNodeId && typeof queryNodeId === 'string') {
-      // Find matches in node keys
-      setActiveNodeId(queryNodeId);
-    }
-  }, [queryNodeId]);
+  const roundScore = (num: number) => {
+    return Math.round(num * 100) / 100;
+  };
 
-  // Construct graph mapping
-  const nodesMap = new Map<string, Node>();
-  const links: LinkType[] = [];
+  const selectedDossier = dossiers.find(d => d.id === selectedDossierId);
 
-  reports.forEach(report => {
-    const vicId = `victim:${report.victimId}`;
-    if (!nodesMap.has(vicId)) {
-      nodesMap.set(vicId, { id: vicId, type: 'Victim', label: report.victimName });
-    }
+  // JSON exporter handler
+  const handleDownloadJSON = (dossier: Dossier) => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dossier, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `et_AI_dossier_${dossier.id}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
 
-    if (report.phoneNumber && report.phoneNumber.trim()) {
-      const pId = `phone:${report.phoneNumber.trim()}`;
-      if (!nodesMap.has(pId)) {
-        nodesMap.set(pId, { id: pId, type: 'Phone', label: report.phoneNumber });
-      }
-      links.push({ source: vicId, target: pId });
-    }
-
-    if (report.upiId && report.upiId.trim()) {
-      const uId = `upi:${report.upiId.trim()}`;
-      if (!nodesMap.has(uId)) {
-        nodesMap.set(uId, { id: uId, type: 'UPI', label: report.upiId });
-      }
-      links.push({ source: vicId, target: uId });
-    }
-
-    if (report.bankAccount && report.bankAccount.trim()) {
-      const bId = `bank:${report.bankAccount.trim()}`;
-      if (!nodesMap.has(bId)) {
-        nodesMap.set(bId, { id: bId, type: 'BankAccount', label: report.bankAccount });
-      }
-      links.push({ source: vicId, target: bId });
-    }
-
-    if (report.deviceFingerprint && report.deviceFingerprint.trim()) {
-      const dId = `device:${report.deviceFingerprint.trim()}`;
-      if (!nodesMap.has(dId)) {
-        nodesMap.set(dId, { id: dId, type: 'Device', label: report.deviceFingerprint });
-      }
-      links.push({ source: vicId, target: dId });
-    }
-  });
-
-  const nodes = Array.from(nodesMap.values());
-
-  // Search filter
-  const filteredNodes = searchQuery.trim()
-    ? nodes.filter(n => n.label.toLowerCase().includes(searchQuery.toLowerCase()) || n.id.toLowerCase().includes(searchQuery.toLowerCase()))
-    : [];
-
-  // Active node details
-  const activeNode = activeNodeId ? nodesMap.get(activeNodeId) : null;
-  const pagerank = activeNodeId && analysis ? analysis.centrality.pagerank[activeNodeId] : null;
-  const betweenness = activeNodeId && analysis ? analysis.centrality.betweenness[activeNodeId] : null;
-  const confidence = activeNodeId && analysis ? analysis["confidence scores"][activeNodeId] : null;
-
-  // Identify connected neighbors
-  const neighbors: Node[] = [];
-  if (activeNodeId) {
-    links.forEach(link => {
-      if (link.source === activeNodeId) {
-        const targetNode = nodesMap.get(link.target);
-        if (targetNode) neighbors.push(targetNode);
-      } else if (link.target === activeNodeId) {
-        const sourceNode = nodesMap.get(link.source);
-        if (sourceNode) neighbors.push(sourceNode);
-      }
-    });
-  }
-
-  // Icon mapping
   const getIcon = (type: string) => {
     switch (type) {
       case 'Victim': return User;
@@ -188,14 +273,14 @@ export default function IntelligencePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-extrabold text-white flex items-center gap-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
           <FileSearch className="w-8 h-8 text-indigo-500" />
-          Intelligence Packet Lookup
+          Intelligence Packet Case Dossier
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Perform a deep-dive investigation into a specific victim or shared infrastructure hub to audit associated links.
+          Forensics investigation dossiers for identified fraud rings. Formatted for cybercrime intelligence reporting.
         </p>
       </div>
 
@@ -205,190 +290,297 @@ export default function IntelligencePage() {
         </div>
       )}
 
-      {/* Main search selector */}
-      <div className="glass-panel border-slate-800 p-6 rounded-xl space-y-4">
-        <h3 className="font-semibold text-slate-200 text-sm">Search Entity Database</h3>
-        <div className="relative max-w-xl">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Enter Name, Phone, UPI ID, Bank Account or Device Fingerprint..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-850 rounded-lg pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-          />
-          {searchQuery && filteredNodes.length > 0 && (
-            <div className="absolute top-12 left-0 z-20 w-full bg-slate-900 border border-slate-800 rounded-lg max-h-60 overflow-y-auto shadow-2xl divide-y divide-slate-800/40">
-              {filteredNodes.map(node => (
-                <button
-                  key={node.id}
-                  onClick={() => {
-                    setActiveNodeId(node.id);
-                    setSearchQuery('');
-                  }}
-                  className="w-full text-left px-4 py-3 hover:bg-slate-800/50 text-xs text-slate-300 transition-colors flex justify-between items-center"
-                >
-                  <span className="truncate font-semibold text-slate-200">{node.label}</span>
-                  <span className="text-[10px] text-slate-500 uppercase font-mono">{node.type}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       {loading ? (
-        <TableSkeleton rows={3} />
-      ) : activeNode ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Node Summary Card */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="glass-panel border-slate-800 p-6 rounded-xl space-y-5">
-              {/* Entity Icon Header */}
-              <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-lg border ${getAccentColor(activeNode.type)}`}>
-                  {React.createElement(getIcon(activeNode.type), { className: 'w-6 h-6' })}
-                </div>
-                <div>
-                  <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500 font-mono">
-                    {activeNode.type} Entity
-                  </span>
-                  <h3 className="text-lg font-bold text-slate-100 break-all">{activeNode.label}</h3>
-                </div>
-              </div>
-
-              {/* Centralities */}
-              <div className="space-y-3 pt-4 border-t border-slate-850">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metrics Profile</h4>
-                
-                <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>Network Connections</span>
-                  <span className="font-semibold text-slate-200">{neighbors.length} links</span>
-                </div>
-                
-                <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>PageRank Score</span>
-                  <span className="font-semibold font-mono text-indigo-400">
-                    {pagerank !== null && pagerank !== undefined ? pagerank.toFixed(5) : '0.00000'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>Betweenness Centrality</span>
-                  <span className="font-semibold font-mono text-pink-400">
-                    {betweenness !== null && betweenness !== undefined ? betweenness.toFixed(5) : '0.00000'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Confidence Score block */}
-              {activeNode.type !== 'Victim' && (
-                <div className="space-y-3 pt-4 border-t border-slate-850">
-                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Risk Profile</h4>
-                  
-                  {confidence !== null && confidence !== undefined ? (
-                    <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-lg space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-rose-300 font-semibold flex items-center gap-1">
-                          <ShieldAlert className="w-4 h-4 text-rose-400" />
-                          Fraud Probability
-                        </span>
-                        <span className="text-base font-bold text-rose-400">{(confidence * 100).toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-rose-955/40 rounded-full h-1">
-                        <div className="bg-rose-500 h-1 rounded-full" style={{ width: `${confidence * 100}%` }}></div>
-                      </div>
-                      <p className="text-[9px] text-rose-400/80 leading-relaxed">
-                        This entity is shared by multiple victims. High risk indicator.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-slate-950/40 border border-slate-900 rounded-lg text-slate-500 text-xs flex gap-2">
-                      <Info className="w-4 h-4 flex-shrink-0" />
-                      <span>Not shared. Degree is low. Safe / Unlinked.</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* View in Graph Link */}
-              <div className="pt-2">
-                <Link
-                  href={`/graph?node=${activeNode.id}`}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600/10 hover:bg-indigo-600/25 border border-indigo-500/20 text-indigo-400 hover:text-white rounded-lg text-xs font-semibold transition-colors"
-                >
-                  Locate on Network Graph
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Connected Entities neighbors table */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="glass-panel border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-5 border-b border-slate-800/60 bg-slate-900/10">
-                <h3 className="font-semibold text-slate-100 flex items-center gap-2">
-                  <ChevronRight className="w-4 h-4 text-indigo-500" />
-                  First-Degree Connected Neighbors ({neighbors.length})
-                </h3>
-              </div>
-
-              {neighbors.length === 0 ? (
-                <div className="p-8 text-center text-slate-500">
-                  No active connections found for this node.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800/60 bg-slate-900/30 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        <th className="px-6 py-3.5">Linked Entity</th>
-                        <th className="px-6 py-3.5">Type</th>
-                        <th className="px-6 py-3.5">Node Key</th>
-                        <th className="px-6 py-3.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/40 text-sm text-slate-300">
-                      {neighbors.map((node) => (
-                        <tr key={node.id} className="hover:bg-slate-900/10 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`p-1.5 rounded border ${getAccentColor(node.type)}`}>
-                                {React.createElement(getIcon(node.type), { className: 'w-3.5 h-3.5' })}
-                              </div>
-                              <span className="font-medium text-slate-200">{node.label}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-xs text-slate-400">{node.type}</span>
-                          </td>
-                          <td className="px-6 py-4 font-mono text-xs text-slate-500">{node.id}</td>
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => setActiveNodeId(node.id)}
-                              className="text-xs text-indigo-400 hover:text-indigo-300 font-medium hover:underline inline-flex items-center gap-0.5"
-                            >
-                              Inspect
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
+        <TableSkeleton rows={4} />
+      ) : dossiers.length === 0 ? (
+        <div className="glass-panel border-slate-800 rounded-xl p-16 text-center text-slate-500 space-y-4">
+          <ShieldCheck className="w-16 h-16 mx-auto text-emerald-500/80 animate-pulse" />
+          <h3 className="font-semibold text-slate-400 text-lg">No Multi-Victim Fraud Rings Logged</h3>
+          <p className="text-sm max-w-sm mx-auto">
+            All submitted cases represent isolated reports with unique characteristics. Dossiers will be compiled here once the graph engine identifies connections.
+          </p>
         </div>
       ) : (
-        <div className="glass-panel border-slate-800 rounded-xl p-16 text-center text-slate-500 space-y-4">
-          <FileSearch className="w-16 h-16 mx-auto text-slate-700 animate-pulse" />
-          <h3 className="font-semibold text-slate-400 text-lg">No Active Investigation Target</h3>
-          <p className="text-sm max-w-sm mx-auto">
-            Please search for an entity name or ID in the input box above or navigate from the dashboard/graph pages to inspect a node's profile.
-          </p>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+          {/* Left Case Index Sidebar */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="glass-panel border-slate-800/80 p-4 rounded-xl space-y-3">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
+                Active Cyber Files
+              </h3>
+              
+              <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+                {dossiers.map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => setSelectedDossierId(d.id)}
+                    className={`w-full text-left p-3 rounded-lg border text-xs transition-all flex justify-between items-center ${
+                      selectedDossierId === d.id
+                        ? 'bg-indigo-600/10 border-indigo-500/30 text-white shadow-md'
+                        : 'bg-slate-900/20 border-slate-900 hover:border-slate-800/80 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-mono font-bold tracking-wider">{d.id}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">{d.victims.length} Victims linked</div>
+                    </div>
+                    <span className={`px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono font-bold ${
+                      d.confidenceScore > 0.85
+                        ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                        : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {(d.confidenceScore * 100).toFixed(0)}% Risk
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Police Case Dossier */}
+          {selectedDossier && (
+            <div className="lg:col-span-3 space-y-6">
+              {/* Dossier paper container */}
+              <div className="relative bg-slate-950 border-2 border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+                
+                {/* Dossier Warning Ribbon */}
+                <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-yellow-500 via-rose-500 to-indigo-600"></div>
+
+                {/* Dossier Header block */}
+                <div className="bg-slate-900/60 px-8 py-6 border-b border-slate-850 flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative">
+                  {/* Watermark stamp background */}
+                  <div className="absolute right-6 top-3 text-slate-900 font-extrabold font-mono text-5xl opacity-35 select-none pointer-events-none border-4 border-slate-900 p-2 transform rotate-12 tracking-widest uppercase">
+                    EVIDENCE
+                  </div>
+
+                  <div className="space-y-1 z-10">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-rose-400 font-mono tracking-wider font-semibold uppercase mb-1">
+                      <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
+                      Confidential // Cybercrime Dossier
+                    </span>
+                    <h2 className="text-2xl font-extrabold tracking-wider text-slate-100 font-mono uppercase flex items-center gap-2">
+                      <Hash className="w-5 h-5 text-slate-500" />
+                      {selectedDossier.id}
+                    </h2>
+                    <p className="text-[10px] text-slate-500 font-mono">SYSTEM CLUSTER MODULE: LOUVAIN-{selectedDossier.communityId}</p>
+                  </div>
+
+                  {/* Actions & Risk */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 z-10">
+                    {/* Confidence score badge */}
+                    <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-lg">
+                      <Scale className="w-4 h-4 text-rose-400" />
+                      <div>
+                        <span className="block text-[8px] text-rose-300/70 uppercase font-mono leading-none">Confidence Score</span>
+                        <span className="text-base font-bold text-rose-400 font-mono">{(selectedDossier.confidenceScore * 100).toFixed(0)}% certainty</span>
+                      </div>
+                    </div>
+
+                    {/* Download Dossier */}
+                    <button
+                      onClick={() => handleDownloadJSON(selectedDossier)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 border border-indigo-500/20 text-white rounded-lg text-xs font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/10"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Case File
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dossier Body */}
+                <div className="p-8 space-y-8">
+                  
+                  {/* Suspicion Profiling */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-l-2 border-indigo-500 pl-2">
+                      I. Grounds for Suspicion & Structural Assessment
+                    </h3>
+                    <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-5 space-y-3 text-xs text-slate-300 leading-relaxed">
+                      {selectedDossier.suspicionReasons.map((reason, i) => (
+                        <div key={i} className="flex gap-2 items-start">
+                          <span className="text-indigo-400 font-mono select-none">[{i+1}]</span>
+                          <p>{reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Evidence Chain Link Analysis */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-l-2 border-indigo-500 pl-2">
+                      II. Evidence Chain & Graph Linkages
+                    </h3>
+                    
+                    <div className="space-y-3">
+                      {selectedDossier.evidenceChain.map((link, i) => {
+                        const Icon = getIcon(link.type);
+                        return (
+                          <div 
+                            key={i} 
+                            className="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                          >
+                            {/* Hub Entity details */}
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded border ${getAccentColor(link.type)}`}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono">{link.type} Link Hub</span>
+                                <div className="font-mono text-xs text-slate-200 font-semibold break-all">{link.label}</div>
+                              </div>
+                            </div>
+
+                            {/* Connected Victims links */}
+                            <div className="flex-grow flex items-center justify-end gap-2 flex-wrap text-xs">
+                              <span className="text-[10px] text-slate-500 font-mono uppercase mr-1">Binds Victims:</span>
+                              {link.connectedVictims.map((vic, index) => (
+                                <span 
+                                  key={index} 
+                                  className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-slate-400 rounded flex items-center gap-1"
+                                >
+                                  <User className="w-3 h-3 text-slate-500" />
+                                  {vic}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Chronological Incident Timeline */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-l-2 border-indigo-500 pl-2">
+                      III. Chronological Crime Timeline
+                    </h3>
+
+                    <div className="relative border-l border-slate-800 ml-4 pl-6 space-y-6">
+                      {selectedDossier.timeline.map((event, i) => (
+                        <div key={i} className="relative">
+                          {/* Timeline dot */}
+                          <span className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-indigo-500 border border-slate-950"></span>
+                          
+                          <div className="space-y-1.5">
+                            {/* Time details */}
+                            <div className="flex items-center gap-2 text-xs font-mono">
+                              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="text-slate-400">{new Date(event.timestamp).toLocaleString()}</span>
+                            </div>
+                            
+                            {/* Victim information */}
+                            <div className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                              {event.victim}
+                              <span className="text-xs font-normal text-slate-500 font-mono">(Incident Logged)</span>
+                            </div>
+
+                            {/* Attribute details */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] text-slate-400 font-mono">
+                              {event.phone && (
+                                <div className="bg-slate-900/10 p-1.5 rounded border border-slate-900 flex items-center gap-1">
+                                  <PhoneCall className="w-3 h-3 text-orange-400/80" />
+                                  <span className="truncate">{event.phone}</span>
+                                </div>
+                              )}
+                              {event.upi && (
+                                <div className="bg-slate-900/10 p-1.5 rounded border border-slate-900 flex items-center gap-1">
+                                  <Wallet className="w-3 h-3 text-yellow-400/80" />
+                                  <span className="truncate">{event.upi}</span>
+                                </div>
+                              )}
+                              {event.bank && (
+                                <div className="bg-slate-900/10 p-1.5 rounded border border-slate-900 flex items-center gap-1">
+                                  <CreditCard className="w-3 h-3 text-emerald-400/80" />
+                                  <span className="truncate">{event.bank}</span>
+                                </div>
+                              )}
+                              {event.device && (
+                                <div className="bg-slate-900/10 p-1.5 rounded border border-slate-900 flex items-center gap-1">
+                                  <Smartphone className="w-3 h-3 text-rose-400/80" />
+                                  <span className="truncate">{event.device}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Complete Syndicate Members Listing */}
+                  <div className="space-y-4 border-t border-slate-900 pt-8">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-l-2 border-indigo-500 pl-2">
+                      IV. Syndicate Inventory List
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                      {/* Victims */}
+                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Connected Victims ({selectedDossier.victims.length})</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedDossier.victims.map((vic, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-indigo-300">
+                              {vic}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Phone numbers */}
+                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Phone Links ({selectedDossier.phones.length})</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedDossier.phones.map((ph, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-orange-300">
+                              {ph}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* UPI Handles */}
+                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">UPI Mules ({selectedDossier.upis.length})</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedDossier.upis.map((upi, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-yellow-300">
+                              {upi}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bank Accounts */}
+                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Mule Bank Accounts ({selectedDossier.banks.length})</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedDossier.banks.map((bank, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-emerald-300">
+                              {bank}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Devices */}
+                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2 md:col-span-2">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Centralized Devices / Emulators ({selectedDossier.devices.length})</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedDossier.devices.map((dev, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-rose-300">
+                              {dev}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
