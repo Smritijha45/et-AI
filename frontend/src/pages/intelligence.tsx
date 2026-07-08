@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Info
 } from 'lucide-react';
+import OnboardingGuide from '../components/OnboardingGuide';
 
 interface Report {
   victimId: string;
@@ -82,7 +83,7 @@ export default function IntelligencePage() {
         setAnalysis(analysisData);
 
         if (analysisData && allReports.length > 0) {
-          // Construct dossiers from communities of size > 5
+          // Construct dossiers from Louvain communities (fraud clusters) of size > 5
           const communities = analysisData.communities || [];
           const confidenceScores = analysisData["confidence scores"] || {};
           const pagerank = analysisData.centrality.pagerank || {};
@@ -134,7 +135,7 @@ export default function IntelligencePage() {
                                       ...devices.map(d => ({ id: `device:${d}`, type: 'Device', val: d }))];
 
               sharedEntities.forEach(ent => {
-                // Find all victims in the community linked to this entity
+                // Find all victims in the cluster linked to this entity
                 const connectedVics: string[] = [];
                 ringReports.forEach((r: Report) => {
                   const match = (ent.type === 'Phone' && r.phoneNumber === ent.val) ||
@@ -183,7 +184,7 @@ export default function IntelligencePage() {
                 suspicionReasons.push("Scammer Contact Linkage: Multi-victim linkages established via common calling phone numbers, mapping scam campaigns to a single calling cell.");
               }
               
-              // Find node with highest PageRank centrality in this community
+              // Find node with highest PageRank centrality in this cluster
               let maxPrNode = "";
               let maxPrVal = 0;
               c.nodes.forEach((nId: string) => {
@@ -273,6 +274,12 @@ export default function IntelligencePage() {
 
   return (
     <div className="space-y-6">
+      {/* Onboarding tooltips */}
+      <OnboardingGuide 
+        pageName="intelligence"
+        message="This page generates investigation-ready reports with confidence scores and evidence chains."
+      />
+
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-extrabold text-white flex items-center gap-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
@@ -280,7 +287,7 @@ export default function IntelligencePage() {
           Intelligence Packet Case Dossier
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Forensics investigation dossiers for identified fraud rings. Formatted for cybercrime intelligence reporting.
+          Forensics investigation dossiers for identified fraud clusters. Formatted for cybercrime intelligence reporting.
         </p>
       </div>
 
@@ -295,7 +302,7 @@ export default function IntelligencePage() {
       ) : dossiers.length === 0 ? (
         <div className="glass-panel border-slate-800 rounded-xl p-16 text-center text-slate-500 space-y-4">
           <ShieldCheck className="w-16 h-16 mx-auto text-emerald-500/80 animate-pulse" />
-          <h3 className="font-semibold text-slate-400 text-lg">No Multi-Victim Fraud Rings Logged</h3>
+          <h3 className="font-semibold text-slate-400 text-lg">No Multi-Victim Fraud Clusters Logged</h3>
           <p className="text-sm max-w-sm mx-auto">
             All submitted cases represent isolated reports with unique characteristics. Dossiers will be compiled here once the graph engine identifies connections.
           </p>

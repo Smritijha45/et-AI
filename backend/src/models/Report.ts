@@ -3,11 +3,24 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IFraudReport extends Document {
   victimId: string;
   victimName: string;
-  phoneNumber?: string;
-  upiId?: string;
-  bankAccount?: string;
+  phoneNumber?: string; // Maps to Scammer Phone Number
+  upiId?: string;       // Maps to Scammer UPI ID
+  bankAccount?: string; // Maps to Scammer Bank Account
   deviceFingerprint?: string;
   reportTimestamp: Date;
+  
+  // New Crime Report Form Fields
+  victimPhone?: string;
+  victimEmail?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  dateOfIncident?: Date;
+  typeOfScam?: string;
+  amountLost?: number;
+  description?: string;
+  evidenceUrl?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +62,56 @@ const FraudReportSchema: Schema = new Schema(
       type: Date,
       default: Date.now,
       required: [true, 'reportTimestamp is required']
+    },
+
+    // New Fields
+    victimPhone: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    victimEmail: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    state: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    dateOfIncident: {
+      type: Date,
+      default: Date.now
+    },
+    typeOfScam: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    amountLost: {
+      type: Number,
+      default: 0
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    evidenceUrl: {
+      type: String,
+      trim: true,
+      default: ''
     }
   },
   {

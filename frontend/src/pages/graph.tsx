@@ -3,6 +3,7 @@ import GraphView from '../components/GraphView';
 import { GraphSkeleton } from '../components/Skeleton';
 import Link from 'next/link';
 import { Network, Search, ShieldAlert, ArrowRight, Info, Eye, Layers } from 'lucide-react';
+import OnboardingGuide from '../components/OnboardingGuide';
 
 interface Report {
   victimId: string;
@@ -136,6 +137,12 @@ export default function GraphPage() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
+      {/* Onboarding tooltips */}
+      <OnboardingGuide 
+        pageName="graph"
+        message="This page visualizes the relationships between victims, devices, phone numbers, bank accounts, and UPI IDs."
+      />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

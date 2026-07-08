@@ -16,7 +16,19 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
       upiId,
       bankAccount,
       deviceFingerprint,
-      reportTimestamp
+      reportTimestamp,
+
+      // New fields from Report Crime Form
+      victimPhone,
+      victimEmail,
+      city,
+      state,
+      country,
+      dateOfIncident,
+      typeOfScam,
+      amountLost,
+      description,
+      evidenceUrl
     } = req.body;
 
     // Validation
@@ -36,7 +48,19 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
       upiId,
       bankAccount,
       deviceFingerprint,
-      reportTimestamp: reportTimestamp ? new Date(reportTimestamp) : undefined
+      reportTimestamp: reportTimestamp ? new Date(reportTimestamp) : undefined,
+
+      // Save additional form details
+      victimPhone,
+      victimEmail,
+      city,
+      state,
+      country,
+      dateOfIncident: dateOfIncident ? new Date(dateOfIncident) : undefined,
+      typeOfScam,
+      amountLost: amountLost ? Number(amountLost) : 0,
+      description,
+      evidenceUrl
     });
 
     const savedReport = await report.save();
@@ -57,7 +81,6 @@ export const createReport = async (req: Request, res: Response): Promise<void> =
  */
 export const getReports = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Optionally implement filters, e.g. /api/report?victimId=xyz
     const filters: Record<string, unknown> = {};
     if (req.query.victimId) {
       filters.victimId = req.query.victimId;
@@ -85,15 +108,12 @@ export const getReports = async (req: Request, res: Response): Promise<void> => 
 export const getReportById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-
-    // We can search either by MongoDB ObjectId OR by victimId
     let report = null;
 
     if (mongoose.Types.ObjectId.isValid(id)) {
       report = await Report.findById(id);
     }
 
-    // Fallback: search by victimId if not found or if the id was not a valid ObjectId
     if (!report) {
       report = await Report.findOne({ victimId: id });
     }
@@ -127,7 +147,6 @@ export const deleteReport = async (req: Request, res: Response): Promise<void> =
       deletedReport = await Report.findByIdAndDelete(id);
     }
 
-    // Fallback: delete by victimId if not deleted by ObjectId
     if (!deletedReport) {
       deletedReport = await Report.findOneAndDelete({ victimId: id });
     }

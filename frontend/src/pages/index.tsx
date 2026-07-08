@@ -15,6 +15,7 @@ import {
   Terminal,
   Activity
 } from 'lucide-react';
+import OnboardingGuide from '../components/OnboardingGuide';
 
 interface Report {
   _id: string;
@@ -94,7 +95,7 @@ export default function Dashboard() {
   // Compute stats card metrics
   const totalReports = reports.length;
   
-  // A community with size > 5 signifies multiple victims sharing entities (a fraud ring)
+  // A community with size > 5 signifies multiple victims sharing entities (a fraud ring/cluster)
   const communities = analysis?.communities || [];
   const fraudRingsCount = communities.filter(c => c.nodes.length > 5).length;
   
@@ -111,6 +112,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Onboarding tooltips */}
+      <OnboardingGuide 
+        pageName="dashboard"
+        message="This dashboard gives an overview of detected fraud reports, suspicious entities, and graph statistics."
+      />
+
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -142,7 +149,7 @@ export default function Dashboard() {
           accentColor="indigo"
         />
         <StatCard
-          title="Active Fraud Rings"
+          title="Active Fraud Clusters"
           value={fraudRingsCount}
           icon={Network}
           description="Linked networks detected"

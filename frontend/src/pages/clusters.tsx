@@ -12,17 +12,18 @@ import {
   ShieldAlert,
   Network
 } from 'lucide-react';
+import OnboardingGuide from '../components/OnboardingGuide';
 
-interface Community {
+interface Cluster {
   id: number;
   nodes: string[];
 }
 
 interface AnalysisData {
-  communities: Community[];
+  communities: Cluster[]; // Matches the backend API field name "communities"
 }
 
-export default function CommunitiesPage() {
+export default function ClustersPage() {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export default function CommunitiesPage() {
     fetchAnalysis();
   }, []);
 
-  // Helper to parse entity types in a community
+  // Helper to parse entity types in a cluster
   const classifyNodes = (nodeIds: string[]) => {
     const victims: string[] = [];
     const phones: string[] = [];
@@ -69,10 +70,10 @@ export default function CommunitiesPage() {
     return { victims, phones, upis, banks, devices };
   };
 
-  const communities = analysis?.communities || [];
+  const clusters = analysis?.communities || [];
   
   // Filter for actual fraud rings (size > 5, indicating resource sharing across victims)
-  const fraudRings = communities
+  const fraudRings = clusters
     .filter(c => c.nodes.length > 5)
     .map(c => ({
       ...c,
@@ -82,14 +83,20 @@ export default function CommunitiesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Onboarding tooltips */}
+      <OnboardingGuide 
+        pageName="clusters"
+        message="This page shows clusters of related fraud cases identified using graph analysis."
+      />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-extrabold text-white flex items-center gap-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
           <Users className="w-8 h-8 text-indigo-500" />
-          Fraud Ring Communities
+          Fraud Ring Clusters
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Communities detected via the Louvain Modularity algorithm. High modularity groups represent coordinated syndicates sharing assets.
+          Clusters detected via the Louvain Modularity algorithm. High modularity groups represent coordinated syndicates sharing assets.
         </p>
       </div>
 
@@ -104,7 +111,7 @@ export default function CommunitiesPage() {
       ) : fraudRings.length === 0 ? (
         <div className="glass-panel border-slate-800 rounded-xl p-12 text-center text-slate-500 space-y-4">
           <Network className="w-16 h-16 mx-auto text-slate-700 animate-pulse" />
-          <h3 className="font-semibold text-slate-400 text-lg">No Multi-Victim Fraud Rings Detected</h3>
+          <h3 className="font-semibold text-slate-400 text-lg">No Multi-Victim Fraud Clusters Detected</h3>
           <p className="text-sm max-w-md mx-auto">
             All logged reports represent isolated incidents with unique attributes. Coordinated scam clusters will be listed here when shared resources are detected.
           </p>
@@ -126,7 +133,7 @@ export default function CommunitiesPage() {
                         <ShieldAlert className="w-5 h-5 text-pink-500" />
                         Fraud Cluster #{idx + 1}
                       </h3>
-                      <span className="text-[10px] text-slate-500 font-mono">Community ID: {ring.id}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">Cluster ID: {ring.id}</span>
                     </div>
                     <span className="px-2.5 py-1 text-[11px] font-semibold bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full">
                       {victims.length} Victims Linked

@@ -98,21 +98,18 @@ export function RiskProfileChart({ confidenceScores }: RiskProfileProps) {
   // Classify risk scores
   let critical = 0; // > 0.90
   let high = 0;     // 0.70 - 0.90
-  let medium = 0;   // 0.40 - 0.70
-  let low = 0;      // < 0.40
+  let low = 0;      // < 0.70
 
   Object.values(confidenceScores).forEach(score => {
     if (score >= 0.90) critical++;
     else if (score >= 0.70) high++;
-    else if (score >= 0.40) medium++;
     else low++;
   });
 
   const categories = [
     { label: 'Critical', count: critical, color: '#f43f5e', desc: 'Score >= 90%' },
-    { label: 'High', count: high, color: '#f97316', desc: 'Score 70-85%' },
-    { label: 'Medium', count: medium, color: '#eab308', desc: 'Score 40-65%' },
-    { label: 'Low', count: low, color: '#6366f1', desc: 'Score < 40%' }
+    { label: 'High', count: high, color: '#f97316', desc: 'Score 70-89%' },
+    { label: 'Low', count: low, color: '#6366f1', desc: 'Score < 70%' }
   ];
 
   const maxCount = Math.max(...categories.map(c => c.count), 1);
