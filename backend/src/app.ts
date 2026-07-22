@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import reportRoutes from './routes/reportRoutes';
 import analysisRoutes from './routes/analysisRoutes';
+import fraudShieldRoutes from './routes/fraudShieldRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -16,6 +17,7 @@ app.use(express.json());
 // Routes
 app.use('/api/report', reportRoutes);
 app.use('/api/graph-analysis', analysisRoutes);
+app.use('/api/fraud-shield', fraudShieldRoutes);
 
 // Health Check / Welcome route
 app.get('/', (_req: Request, res: Response) => {

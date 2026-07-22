@@ -9,10 +9,11 @@ export function NodeDistributionChart({ nodeTypeCounts }: NodeDistributionProps)
   const data = Object.entries(nodeTypeCounts).map(([type, count]) => ({
     name: type === 'BankAccount' ? 'Bank Account' : type,
     value: count,
-    color: type === 'Victim' ? '#6366f1' :
-           type === 'Phone' ? '#f97316' :
-           type === 'UPI' ? '#eab308' :
-           type === 'BankAccount' ? '#10b981' : '#f43f5e'
+    color: type === 'Victim' ? '#0ea5e9' : // cyan-500
+           type === 'Phone' ? '#f59e0b' : // amber-500
+           type === 'UPI' ? '#8b5cf6' : // violet-500
+           type === 'BankAccount' ? '#10b981' : // emerald-500
+           '#f43f5e' // rose-500
   }));
 
   const total = data.reduce((acc, curr) => acc + curr.value, 0);
@@ -56,7 +57,8 @@ export function NodeDistributionChart({ nodeTypeCounts }: NodeDistributionProps)
                 strokeLinecap="round"
                 className="transition-all duration-1000 ease-out hover:scale-[1.03] origin-center cursor-pointer"
                 style={{
-                  transitionDelay: `${idx * 150}ms`
+                  transitionDelay: `${idx * 150}ms`,
+                  filter: `drop-shadow(0 0 4px ${item.color}80)`
                 }}
               />
             );
@@ -107,9 +109,9 @@ export function RiskProfileChart({ confidenceScores }: RiskProfileProps) {
   });
 
   const categories = [
-    { label: 'Critical', count: critical, color: '#f43f5e', desc: 'Score >= 90%' },
-    { label: 'High', count: high, color: '#f97316', desc: 'Score 70-89%' },
-    { label: 'Low', count: low, color: '#6366f1', desc: 'Score < 70%' }
+    { label: 'Critical', count: critical, color: '#e11d48', desc: 'Score >= 90%' }, // rose-600
+    { label: 'High', count: high, color: '#f59e0b', desc: 'Score 70-89%' },       // amber-500
+    { label: 'Low', count: low, color: '#0ea5e9', desc: 'Score < 70%' }         // cyan-500
   ];
 
   const maxCount = Math.max(...categories.map(c => c.count), 1);

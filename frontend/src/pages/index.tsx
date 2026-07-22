@@ -121,11 +121,11 @@ export default function Dashboard() {
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl glow-text-gradient">
+          <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl glow-text-gradient">
             Cybercrime Forensics & Graph Intelligence
           </h1>
-          <p className="text-slate-400 text-sm mt-1 flex items-center gap-1.5">
-            <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
+          <p className="text-cyan-400/80 font-mono text-sm mt-2 flex items-center gap-2">
+            <span className="live-pulse-dot w-2 h-2 bg-emerald-500 rounded-full" />
             Active monitoring engine. Resolving multi-hop linkages and mule rings dynamically.
           </p>
         </div>
@@ -156,7 +156,7 @@ export default function Dashboard() {
           loading={loading}
           trend={fraudRingsCount > 0 ? `${fraudRingsCount} detected` : undefined}
           trendType={fraudRingsCount > 0 ? 'negative' : 'neutral'}
-          accentColor="pink"
+          accentColor="rose"
         />
         <StatCard
           title="Suspicious Phone Hubs"
@@ -176,24 +176,24 @@ export default function Dashboard() {
           loading={loading}
           trend={suspiciousDevices > 0 ? 'High Risk' : undefined}
           trendType={suspiciousDevices > 0 ? 'negative' : 'neutral'}
-          accentColor="rose"
+          accentColor="pink"
         />
       </div>
 
       {/* Telemetry Charts */}
       {analysis && !loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-panel border-slate-800/80 rounded-xl p-6 bg-slate-900/10 hover:border-slate-800 transition-colors">
-            <h3 className="font-semibold text-slate-100 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider font-mono">
-              <Network className="w-4 h-4 text-indigo-400" />
+          <div className="glass-panel hover:glass-panel-hover rounded-2xl p-6">
+            <h3 className="font-bold text-slate-100 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider font-mono">
+              <Network className="w-4 h-4 text-cyan-400" />
               Graph Node Distribution
             </h3>
-            <p className="text-[10px] text-slate-500 mb-4">Breakdown of unique structural entity nodes in the database.</p>
+            <p className="text-[10px] text-slate-500 mb-4 font-mono">Breakdown of unique structural entity nodes in the database.</p>
             <NodeDistributionChart nodeTypeCounts={analysis["graph stats"].nodeTypeCounts} />
           </div>
 
-          <div className="glass-panel border-slate-800/80 rounded-xl p-6 bg-slate-900/10 hover:border-slate-800 transition-colors">
-            <h3 className="font-semibold text-slate-100 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider font-mono">
+          <div className="glass-panel hover:glass-panel-hover rounded-2xl p-6">
+            <h3 className="font-bold text-slate-100 mb-2 flex items-center gap-2 text-sm uppercase tracking-wider font-mono">
               <AlertTriangle className="w-4 h-4 text-rose-500" />
               Entity Risk Classification
             </h3>
@@ -208,52 +208,54 @@ export default function Dashboard() {
         {loading ? (
           <TableSkeleton />
         ) : (
-          <div className="glass-panel border-slate-800/80 rounded-xl overflow-hidden shadow-2xl bg-slate-900/10">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800/60">
+          <div className="glass-panel overflow-hidden shadow-2xl rounded-2xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/5">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-indigo-400" />
-                <h3 className="font-semibold text-slate-100">Recent Fraud Reports</h3>
+                <Clock className="w-4 h-4 text-cyan-400" />
+                <h3 className="font-bold text-slate-100 uppercase tracking-wide text-sm font-mono">Recent Intelligence Reports</h3>
               </div>
-              <span className="text-xs text-slate-400">Showing {reports.length} total entries</span>
+              <span className="text-xs text-cyan-500/70 font-mono">Showing {reports.length} total entries</span>
             </div>
 
             {reports.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
+              <div className="p-8 text-center text-slate-500 font-mono text-sm">
                 No fraud reports recorded in database. Use API to log reports.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-800/60 bg-slate-900/30 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      <th className="px-6 py-3.5">Victim</th>
-                      <th className="px-6 py-3.5">Phone Number</th>
-                      <th className="px-6 py-3.5">UPI ID</th>
-                      <th className="px-6 py-3.5">Bank Account</th>
-                      <th className="px-6 py-3.5">Device Fingerprint</th>
-                      <th className="px-6 py-3.5 text-right">Actions</th>
+                    <tr className="border-b border-white/5 bg-black/20 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                      <th className="px-6 py-4">Victim</th>
+                      <th className="px-6 py-4">Phone Number</th>
+                      <th className="px-6 py-4">UPI ID</th>
+                      <th className="px-6 py-4">Bank Account</th>
+                      <th className="px-6 py-4">Device Fingerprint</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/40 text-sm text-slate-300">
+                  <tbody className="divide-y divide-white/5 text-sm text-slate-300">
                     {reports.slice(0, 10).map((report) => (
-                      <tr key={report._id} className="hover:bg-slate-900/20 transition-colors">
+                      <tr key={report._id} className="hover:bg-white/5 transition-colors">
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-slate-500" />
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-cyan-900/30 border border-cyan-500/20 flex items-center justify-center">
+                              <User className="w-4 h-4 text-cyan-400" />
+                            </div>
                             <div>
-                              <div className="font-medium text-slate-200">{report.victimName}</div>
-                              <div className="text-xs text-slate-500 font-mono">{report.victimId}</div>
+                              <div className="font-bold text-slate-200">{report.victimName}</div>
+                              <div className="text-[10px] text-cyan-500/60 font-mono">{report.victimId}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs">{report.phoneNumber || '—'}</td>
-                        <td className="px-6 py-4 font-mono text-xs text-indigo-300">{report.upiId || '—'}</td>
-                        <td className="px-6 py-4 font-mono text-xs">{report.bankAccount || '—'}</td>
-                        <td className="px-6 py-4 font-mono text-xs text-pink-300">{report.deviceFingerprint || '—'}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-amber-200/80">{report.phoneNumber || '—'}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-violet-300/80">{report.upiId || '—'}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-emerald-300/80">{report.bankAccount || '—'}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-rose-300/80">{report.deviceFingerprint || '—'}</td>
                         <td className="px-6 py-4 text-right">
                           <Link 
                             href={`/intelligence?node=victim:${report.victimId}`}
-                            className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium hover:underline"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-cyan-400 font-bold border border-cyan-500/20 hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all uppercase tracking-wider"
                           >
                             Investigate
                             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -271,27 +273,28 @@ export default function Dashboard() {
 
       {/* Forensics Terminal Logs */}
       {logs.length > 0 && !loading && (
-        <div className="glass-panel border-slate-800/80 rounded-xl p-5 shadow-2xl bg-slate-950/60 font-mono text-xs text-indigo-400">
-          <div className="flex items-center justify-between border-b border-indigo-950/40 pb-3 mb-3">
-            <div className="flex items-center gap-2 text-indigo-300">
-              <Terminal className="w-4 h-4 text-indigo-400" />
-              <span>FORENSIC TELEMETRY CONSOLE</span>
+        <div className="glass-panel border-white/10 rounded-2xl p-5 shadow-2xl bg-black/40 font-mono text-xs text-cyan-400 scanline-overlay relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-cyan-500/5 pointer-events-none z-0"></div>
+          <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3 mb-3 relative z-10">
+            <div className="flex items-center gap-2 text-cyan-300">
+              <Terminal className="w-4 h-4 text-cyan-400" />
+              <span className="font-bold tracking-widest uppercase">FORENSIC TELEMETRY CONSOLE</span>
             </div>
             <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500 shadow-[0_0_8px_#22d3ee]"></span>
             </span>
           </div>
-          <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin select-all">
+          <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-thin select-all relative z-10">
             {logs.map((log, index) => (
               <div key={index} className="flex gap-2">
-                <span className="text-indigo-600/80 select-none">➔</span>
+                <span className="text-cyan-500/80 select-none">➔</span>
                 <p>{log}</p>
               </div>
             ))}
-            <div className="text-indigo-300 flex items-center gap-1">
+            <div className="text-cyan-300 flex items-center gap-1">
               <span>➔ [system] listening for incoming logs</span>
-              <span className="terminal-cursor font-bold">█</span>
+              <span className="terminal-cursor font-bold text-cyan-400">█</span>
             </div>
           </div>
         </div>

@@ -282,11 +282,11 @@ export default function IntelligencePage() {
 
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-extrabold text-white flex items-center gap-2 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-          <FileSearch className="w-8 h-8 text-indigo-500" />
+        <h1 className="text-4xl font-black text-white flex items-center gap-3 tracking-tighter uppercase drop-shadow-lg">
+          <FileSearch className="w-8 h-8 text-cyan-500 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
           Intelligence Packet Case Dossier
         </h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-cyan-400/80 font-mono text-xs mt-2 flex items-center gap-2 uppercase tracking-widest">
           Forensics investigation dossiers for identified fraud clusters. Formatted for cybercrime intelligence reporting.
         </p>
       </div>
@@ -300,10 +300,10 @@ export default function IntelligencePage() {
       {loading ? (
         <TableSkeleton rows={4} />
       ) : dossiers.length === 0 ? (
-        <div className="glass-panel border-slate-800 rounded-xl p-16 text-center text-slate-500 space-y-4">
-          <ShieldCheck className="w-16 h-16 mx-auto text-emerald-500/80 animate-pulse" />
-          <h3 className="font-semibold text-slate-400 text-lg">No Multi-Victim Fraud Clusters Logged</h3>
-          <p className="text-sm max-w-sm mx-auto">
+        <div className="glass-panel border-white/10 rounded-2xl p-16 text-center text-slate-500 space-y-5 bg-black/40">
+          <ShieldCheck className="w-16 h-16 mx-auto text-emerald-500 animate-pulse drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+          <h3 className="font-bold text-slate-300 text-lg uppercase tracking-widest">No Multi-Victim Fraud Clusters Logged</h3>
+          <p className="text-xs max-w-sm mx-auto font-mono text-slate-500 leading-relaxed uppercase">
             All submitted cases represent isolated reports with unique characteristics. Dossiers will be compiled here once the graph engine identifies connections.
           </p>
         </div>
@@ -311,31 +311,31 @@ export default function IntelligencePage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
           {/* Left Case Index Sidebar */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="glass-panel border-slate-800/80 p-4 rounded-xl space-y-3">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-2">
-                <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="glass-panel bg-black/40 border-white/10 p-4 rounded-2xl space-y-4 shadow-xl">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-3">
+                <FolderOpen className="w-4 h-4 text-cyan-400" />
                 Active Cyber Files
               </h3>
               
-              <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                 {dossiers.map(d => (
                   <button
                     key={d.id}
                     onClick={() => setSelectedDossierId(d.id)}
-                    className={`w-full text-left p-3 rounded-lg border text-xs transition-all flex justify-between items-center ${
+                    className={`w-full text-left p-3.5 rounded-xl border text-xs transition-all flex justify-between items-center ${
                       selectedDossierId === d.id
-                        ? 'bg-indigo-600/10 border-indigo-500/30 text-white shadow-md'
-                        : 'bg-slate-900/20 border-slate-900 hover:border-slate-800/80 text-slate-400 hover:text-slate-200'
+                        ? 'bg-cyan-900/30 border-cyan-500/50 text-white shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                        : 'bg-black/60 border-white/5 hover:border-cyan-500/30 text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     <div>
-                      <div className="font-mono font-bold tracking-wider">{d.id}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">{d.victims.length} Victims linked</div>
+                      <div className="font-mono font-bold tracking-wider text-[11px]">{d.id}</div>
+                      <div className="text-[10px] text-cyan-400/70 mt-1 uppercase tracking-widest">{d.victims.length} Victims linked</div>
                     </div>
-                    <span className={`px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono font-bold ${
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-mono font-bold border ${
                       d.confidenceScore > 0.85
-                        ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
-                        : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+                        ? 'bg-rose-950/40 border-rose-500/50 text-rose-400 shadow-[0_0_10px_rgba(225,29,72,0.2)]'
+                        : 'bg-amber-950/40 border-amber-500/50 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
                     }`}>
                       {(d.confidenceScore * 100).toFixed(0)}% Risk
                     </span>
@@ -349,45 +349,45 @@ export default function IntelligencePage() {
           {selectedDossier && (
             <div className="lg:col-span-3 space-y-6">
               {/* Dossier paper container */}
-              <div className="relative bg-slate-950 border-2 border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+              <div className="relative glass-panel bg-black/60 border-white/10 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.8)] backdrop-blur-xl">
                 
                 {/* Dossier Warning Ribbon */}
-                <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-yellow-500 via-rose-500 to-indigo-600"></div>
+                <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-cyan-500 via-rose-500 to-cyan-600"></div>
 
                 {/* Dossier Header block */}
-                <div className="bg-slate-900/60 px-8 py-6 border-b border-slate-850 flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative">
+                <div className="bg-black/40 px-8 py-8 border-b border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative shadow-inner">
                   {/* Watermark stamp background */}
-                  <div className="absolute right-6 top-3 text-slate-900 font-extrabold font-mono text-5xl opacity-35 select-none pointer-events-none border-4 border-slate-900 p-2 transform rotate-12 tracking-widest uppercase">
-                    EVIDENCE
+                  <div className="absolute right-8 top-6 text-white/5 font-black font-mono text-6xl select-none pointer-events-none transform -rotate-6 tracking-widest uppercase border-4 border-white/5 p-4 mix-blend-overlay">
+                    CONFIDENTIAL
                   </div>
 
-                  <div className="space-y-1 z-10">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-rose-400 font-mono tracking-wider font-semibold uppercase mb-1">
-                      <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
-                      Confidential // Cybercrime Dossier
+                  <div className="space-y-2 z-10">
+                    <span className="inline-flex items-center gap-2 text-[10px] text-rose-400 font-mono tracking-widest font-bold uppercase mb-1 drop-shadow-md">
+                      <ShieldAlert className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                      Cybercrime Intelligence Dossier
                     </span>
-                    <h2 className="text-2xl font-extrabold tracking-wider text-slate-100 font-mono uppercase flex items-center gap-2">
-                      <Hash className="w-5 h-5 text-slate-500" />
+                    <h2 className="text-3xl font-black tracking-widest text-white font-mono uppercase flex items-center gap-3 drop-shadow-lg">
+                      <Hash className="w-6 h-6 text-cyan-500" />
                       {selectedDossier.id}
                     </h2>
-                    <p className="text-[10px] text-slate-500 font-mono">SYSTEM CLUSTER MODULE: LOUVAIN-{selectedDossier.communityId}</p>
+                    <p className="text-[10px] text-cyan-400/60 font-mono tracking-widest uppercase">SYSTEM CLUSTER MODULE: LOUVAIN-{selectedDossier.communityId}</p>
                   </div>
 
                   {/* Actions & Risk */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 z-10">
                     {/* Confidence score badge */}
-                    <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-lg">
-                      <Scale className="w-4 h-4 text-rose-400" />
+                    <div className="flex items-center gap-3 bg-rose-950/40 border border-rose-500/30 px-5 py-3 rounded-xl shadow-[0_0_15px_rgba(225,29,72,0.15)]">
+                      <Scale className="w-5 h-5 text-rose-400" />
                       <div>
-                        <span className="block text-[8px] text-rose-300/70 uppercase font-mono leading-none">Confidence Score</span>
-                        <span className="text-base font-bold text-rose-400 font-mono">{(selectedDossier.confidenceScore * 100).toFixed(0)}% certainty</span>
+                        <span className="block text-[9px] text-rose-300/80 uppercase font-mono tracking-widest leading-none mb-1">Confidence Score</span>
+                        <span className="text-xl font-black text-rose-400 font-mono">{(selectedDossier.confidenceScore * 100).toFixed(0)}% <span className="text-[10px] text-rose-500">CERTAINTY</span></span>
                       </div>
                     </div>
 
                     {/* Download Dossier */}
                     <button
                       onClick={() => handleDownloadJSON(selectedDossier)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 border border-indigo-500/20 text-white rounded-lg text-xs font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/10"
+                      className="btn-primary flex items-center gap-2 text-[10px] uppercase tracking-widest px-6 py-3"
                     >
                       <Download className="w-4 h-4" />
                       Download Case File
@@ -399,15 +399,15 @@ export default function IntelligencePage() {
                 <div className="p-8 space-y-8">
                   
                   {/* Suspicion Profiling */}
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-l-2 border-indigo-500 pl-2">
+                  <div className="space-y-4">
+                    <h3 className="text-[11px] font-bold text-cyan-400 uppercase tracking-widest font-mono border-l-2 border-cyan-500 pl-3 shadow-[inset_1px_0_0_rgba(6,182,212,0.5)]">
                       I. Grounds for Suspicion & Structural Assessment
                     </h3>
-                    <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-5 space-y-3 text-xs text-slate-300 leading-relaxed">
+                    <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-3 text-xs text-slate-300 leading-relaxed shadow-inner">
                       {selectedDossier.suspicionReasons.map((reason, i) => (
-                        <div key={i} className="flex gap-2 items-start">
-                          <span className="text-indigo-400 font-mono select-none">[{i+1}]</span>
-                          <p>{reason}</p>
+                        <div key={i} className="flex gap-3 items-start">
+                          <span className="text-cyan-500 font-mono font-bold select-none">[{i+1}]</span>
+                          <p className="font-mono tracking-tight">{reason}</p>
                         </div>
                       ))}
                     </div>
@@ -516,18 +516,20 @@ export default function IntelligencePage() {
                   </div>
 
                   {/* Complete Syndicate Members Listing */}
-                  <div className="space-y-4 border-t border-slate-900 pt-8">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono border-l-2 border-indigo-500 pl-2">
+                  <div className="space-y-4 border-t border-white/10 pt-8">
+                    <h3 className="text-[11px] font-bold text-cyan-400 uppercase tracking-widest font-mono border-l-2 border-cyan-500 pl-3 shadow-[inset_1px_0_0_rgba(6,182,212,0.5)]">
                       IV. Syndicate Inventory List
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                       {/* Victims */}
-                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Connected Victims ({selectedDossier.victims.length})</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-3 shadow-inner">
+                        <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest block flex items-center gap-2">
+                          <User className="w-3 h-3" /> Connected Victims ({selectedDossier.victims.length})
+                        </span>
+                        <div className="flex flex-wrap gap-2">
                           {selectedDossier.victims.map((vic, i) => (
-                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-indigo-300">
+                            <span key={i} className="px-2 py-1 bg-cyan-950/40 border border-cyan-500/20 rounded-md text-cyan-300 text-[10px] uppercase tracking-wider">
                               {vic}
                             </span>
                           ))}
@@ -535,11 +537,13 @@ export default function IntelligencePage() {
                       </div>
 
                       {/* Phone numbers */}
-                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Phone Links ({selectedDossier.phones.length})</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-3 shadow-inner">
+                        <span className="text-[10px] text-amber-500 font-bold uppercase tracking-widest block flex items-center gap-2">
+                          <PhoneCall className="w-3 h-3" /> Phone Links ({selectedDossier.phones.length})
+                        </span>
+                        <div className="flex flex-wrap gap-2">
                           {selectedDossier.phones.map((ph, i) => (
-                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-orange-300">
+                            <span key={i} className="px-2 py-1 bg-amber-950/40 border border-amber-500/20 rounded-md text-amber-300 text-[10px] uppercase tracking-wider">
                               {ph}
                             </span>
                           ))}
@@ -547,11 +551,13 @@ export default function IntelligencePage() {
                       </div>
 
                       {/* UPI Handles */}
-                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">UPI Mules ({selectedDossier.upis.length})</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-3 shadow-inner">
+                        <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block flex items-center gap-2">
+                          <Wallet className="w-3 h-3" /> UPI Mules ({selectedDossier.upis.length})
+                        </span>
+                        <div className="flex flex-wrap gap-2">
                           {selectedDossier.upis.map((upi, i) => (
-                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-yellow-300">
+                            <span key={i} className="px-2 py-1 bg-yellow-950/40 border border-yellow-500/20 rounded-md text-yellow-300 text-[10px] uppercase tracking-wider">
                               {upi}
                             </span>
                           ))}
@@ -559,11 +565,13 @@ export default function IntelligencePage() {
                       </div>
 
                       {/* Bank Accounts */}
-                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Mule Bank Accounts ({selectedDossier.banks.length})</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-3 shadow-inner">
+                        <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest block flex items-center gap-2">
+                          <CreditCard className="w-3 h-3" /> Mule Bank Accounts ({selectedDossier.banks.length})
+                        </span>
+                        <div className="flex flex-wrap gap-2">
                           {selectedDossier.banks.map((bank, i) => (
-                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-emerald-300">
+                            <span key={i} className="px-2 py-1 bg-emerald-950/40 border border-emerald-500/20 rounded-md text-emerald-300 text-[10px] uppercase tracking-wider">
                               {bank}
                             </span>
                           ))}
@@ -571,11 +579,13 @@ export default function IntelligencePage() {
                       </div>
 
                       {/* Devices */}
-                      <div className="bg-slate-900/20 border border-slate-900 rounded-xl p-4 space-y-2 md:col-span-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Centralized Devices / Emulators ({selectedDossier.devices.length})</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-5 space-y-3 shadow-inner md:col-span-2">
+                        <span className="text-[10px] text-rose-500 font-bold uppercase tracking-widest block flex items-center gap-2">
+                          <Smartphone className="w-3 h-3" /> Centralized Devices / Emulators ({selectedDossier.devices.length})
+                        </span>
+                        <div className="flex flex-wrap gap-2">
                           {selectedDossier.devices.map((dev, i) => (
-                            <span key={i} className="px-2 py-1 bg-slate-950 border border-slate-850 rounded text-rose-300">
+                            <span key={i} className="px-2 py-1 bg-rose-950/40 border border-rose-500/20 rounded-md text-rose-300 text-[10px] uppercase tracking-wider">
                               {dev}
                             </span>
                           ))}
